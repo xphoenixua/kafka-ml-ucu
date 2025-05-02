@@ -1,0 +1,109 @@
+services:
+
+  # --- Redpanda --- #
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:latest
+    container_name: redpanda
+    ports:
+      # kafka API port exposed to the host
+      - "9092:9092"
+      # kafka API port for communication between services inside the Docker network
+      - "29092:29092"
+      # kafks admin port for monitoring
+      - "9644:9644"
+    volumes:
+      - redpanda_data:/var/lib/redpanda/data
+    command:
+      - redpanda
+      - start
+      - --node-id
+      - "0"
+      - --kafka-addr
+      - PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092 # listen on all interfaces inside container
+      - --advertise-kafka-addr
+      - PLAINTEXT://redpanda:29092,PLAINTEXT_HOST://localhost:9092 # advertise for internal and external clients
+
+  # --- Microservices --- #
+  data_generator:
+    build: ./microservices/data_generator # the directory with its Dockerfile
+    volumes:
+      - ./microservices/data_generator:/app # mounts the local code into the container
+      # - /path/to/your/videos:/data/videos # Example volume for dataset
+    command: python /app/app.py # Command to run your dummy Flask app
+    ports:
+      - "5001:5000" # expose Flask port for testing
+    environment:
+      SERVICE_NAME: Data Generator
+      KAFKA_BROKER: redpanda:29092 # connect to the redpanda service using its internal port
+    depends_on:
+      - redpanda # depends on Redpanda being ready to send data
+
+  car_detector:
+    build: ./microservices/car_detector
+    volumes:
+      - ./microservices/car_detector:/app
+      # might need volume for model weights later
+    command: python /app/app.py
+    ports:
+      - "5003:5000"
+    environment:
+      SERVICE_NAME: Car Detector
+      KAFKA_BROKER: redpanda:29092
+    depends_on:
+      - redpanda
+
+  person_detector:
+    build: ./microservices/person_detector
+    volumes:
+      - ./microservices/person_detector:/app
+    command: python /app/app.py
+    ports:
+      - "5004:5000"
+    environment:
+      SERVICE_NAME: Person Detector
+      KAFKA_BROKER: redpanda:29092
+    depends_on:
+      - redpanda
+
+  car_tracker:
+    build: ./microservices/car_tracker
+    volumes:
+      - ./microservices/car_tracker:/app
+    command: python /app/app.py
+    ports:
+      - "5005:5000"
+    environment:
+      SERVICE_NAME: Car Tracker
+      KAFKA_BROKER: redpanda:29092
+    depends_on:
+      - redpanda
+
+  person_tracker:
+    build: ./microservices/person_tracker
+    volumes:
+      - ./microservices/person_tracker:/app
+    command: python /app/app.py
+    ports:
+      - "5006:5000"
+    environment:
+      SERVICE_NAME: Person Tracker
+      KAFKA_BROKER: redpanda:29092
+    depends_on:
+      - redpanda
+
+  stats_generator:
+    build: ./microservices/stats_generator
+    volumes:
+      - ./microservices/stats_generator:/app
+    command: python /app/app.py
+    ports:
+      - "5007:5000" # test (a dashboard port)
+    environment:
+      SERVICE_NAME: Stats Generator
+      KAFKA_BROKER: redpanda:29092
+    depends_on:
+      - redpanda
+
+# --- Volumes --- #
+volumes:
+  redpanda_data: # this volume will persist Redpanda's data across container restarts
