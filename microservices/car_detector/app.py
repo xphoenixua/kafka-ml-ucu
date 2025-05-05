@@ -1,35 +1,35 @@
-from flask import Flask
+from flask import Flask, jsonify
 import os
-import time
+import sys
+import torch
+from ultralytics import YOLO
+
+CUDA_AVAILABLE = torch.cuda.is_available()
+CUDA_INFO = {
+    'device_count': torch.cuda.device_count(),
+    'device_name_0': torch.cuda.get_device_name(0) if torch.cuda.device_count() > 0 else None
+} if CUDA_AVAILABLE else {}
 
 app = Flask(__name__)
 
-# simple endpoint to check if the service is alive
+SERVICE_NAME = os.environ.get('SERVICE_NAME', 'Unknown Service')
+KAFKA_BROKER = os.environ.get('KAFKA_BROKER', 'localhost:9092')
+
 @app.route('/')
 def hello_world():
-    service_name = os.environ.get('SERVICE_NAME', 'Unknown Service')
-    return f'{service_name} is running!'
+    return f'{SERVICE_NAME} is running!'
 
-# this is where the actual logic would go, but for the dummy app, maybe just loop or wait
-def run_dummy_task():
-    service_name = os.environ.get('SERVICE_NAME', 'Unknown Service')
-    print(f"[{service_name}] Starting dummy task...")
-    # In a real service, this would be a loop reading from/writing to Kafka
-    while True:
-        print(f"[{service_name}] Dummy heartbeat...")
-        time.sleep(10) # Simulate work
+@app.route('/status')
+def status():
+    return jsonify({
+        'service_name': SERVICE_NAME,
+        'python_version': sys.version,
+        'kafka_broker_env': KAFKA_BROKER,
+        'cuda_available': CUDA_AVAILABLE,
+        **CUDA_INFO
+    })
 
-# You might run the Flask server in one thread and the worker task in another
-# Or, for a simple dummy, just run the Flask server
 if __name__ == '__main__':
-    # For simplicity, just run the web server.
-    # Real microservices processing Kafka messages often don't need a web server,
-    # or they use it only for health checks/metrics.
-    # But for testing basic container startup, Flask is convenient.
-    print("Starting Flask app...")
-    # You might want to run the dummy task in a separate process/thread later
-    # import threading
-    # task_thread = threading.Thread(target=run_dummy_task)
-    # task_thread.daemon = True # Allow main thread to exit
-    # task_thread.start()
-    app.run(debug=True, host='0.0.0.0', port=5000) # Listen on all interfaces
+    print(f"[{SERVICE_NAME}] Starting Flask app on 0.0.0.0:5000...")
+    
+    app.run(debug=True, host='0.0.0.0', port=5000)

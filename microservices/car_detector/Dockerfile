@@ -1,8 +1,8 @@
-FROM python:3.9-slim
+FROM nvcr.io/nvidia/pytorch:24.05-py3
 
-WORKDIR /app # set the working directory in the container volume
+WORKDIR /app
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip3 install --no-cache-dir -r requirements.txt
 
-COPY app.py .
+COPY . .
