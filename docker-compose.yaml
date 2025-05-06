@@ -28,13 +28,14 @@ services:
     build: ./microservices/data_generator # the directory with its Dockerfile
     volumes:
       - ./microservices/data_generator:/app # mounts the local code into the container
-      # - /path/to/your/videos:/data/videos # Example volume for dataset
+      - ./data:/app/data # mounts the local data into the container
     command: python /app/app.py # Command to run your dummy Flask app
     ports:
       - "5001:5000" # expose Flask port for testing
     environment:
       SERVICE_NAME: Data Generator
       KAFKA_BROKER: redpanda:29092 # connect to the redpanda service using its internal port
+      DATASET_ROOT_DIR: /app/data/VisDrone2019-MOT-val
     depends_on:
       - redpanda # depends on Redpanda being ready to send data
 
