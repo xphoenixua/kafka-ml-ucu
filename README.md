@@ -31,6 +31,7 @@ Each microservice is configured to expose an HTTP port (mapped from the containe
     *   Access: `http://localhost:5001/`
     *   Status endpoint: `http://localhost:5001/status` - Provides general service info and confirms environment variables are set.
     *   Data check endpoint: `http://localhost:5001/data_status` - Verifies that the volume mount is working and the service can see the configured dataset directory and its contents. Check this endpoint to confirm your data is correctly mounted.
+    *   Start data generation into frames: `http://localhost:5001/start/<input_id>`. It populates topics for car and person detection with frames. It looks for input id in specified data root in `sequences` folder. Supports pure video and video split by frames already.
 
 *   **Car Detector:** (Mapped port 5003)
     *   Access: `http://localhost:5003/`
