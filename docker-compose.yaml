@@ -22,6 +22,11 @@ services:
       - PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092 # listen on all interfaces inside container
       - --advertise-kafka-addr
       - PLAINTEXT://redpanda:29092,PLAINTEXT_HOST://localhost:9092 # advertise for internal and external clients
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "info"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
 
   # --- Microservices --- #
   data_generator:
@@ -36,8 +41,11 @@ services:
       SERVICE_NAME: Data Generator
       KAFKA_BROKER: redpanda:29092 # connect to the redpanda service using its internal port
       DATASET_ROOT_DIR: /app/data/VisDrone2019-MOT-val
+      CAR_TOPIC: car-detection
+      PERSON_TOPIC: person-detection
     depends_on:
-      - redpanda # depends on Redpanda being ready to send data
+      redpanda: # depends on Redpanda being ready to send data
+        condition: service_healthy
 
   car_detector:
     build: ./microservices/car_detector
