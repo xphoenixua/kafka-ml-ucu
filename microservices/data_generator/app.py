@@ -162,7 +162,7 @@ def start_sequence_stream(input_id):
                 break
             _, buffer = cv2.imencode('.jpg', frame)
             b64_image = base64.b64encode(buffer.tobytes()).decode('utf-8')
-            frame_id = f'{input_id.replace(".", "_")}_{frame_count:05d}'
+            frame_id = f'frame_{frame_count:05d}'
             send_to_kafka(frame_id, b64_image, CAR_TOPIC, PERSON_TOPIC, input_id)
             frame_count += 1
             time.sleep(0.05)
