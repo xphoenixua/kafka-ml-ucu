@@ -4,6 +4,7 @@ FROM python:3.9-slim
 # Install system dependencies for OpenCV and Kafka client
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
+      libpq-dev \
       gcc \
       libglib2.0-0 \
       libsm6 \
@@ -32,7 +33,10 @@ RUN pip install --no-cache-dir \
       "numpy<2.0" \
       pandas \
       tqdm \
-      PyYAML
+      PyYAML \
+      psycopg2-binary \
+      sqlalchemy
+
 
 # Copy application code
 COPY app.py .

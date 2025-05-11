@@ -8,6 +8,7 @@ import logging
 from datetime import datetime, timezone
 from kafka import KafkaProducer
 from kafka.errors import NoBrokersAvailable
+from sqlalchemy import create_engine, text
 import cv2
 
 logging.basicConfig(
@@ -25,6 +26,12 @@ DATASET_ROOT_DIR = os.environ.get('DATASET_ROOT_DIR')
 CAR_TOPIC = os.environ.get('CAR_TOPIC')
 PERSON_TOPIC = os.environ.get('PERSON_TOPIC')
 
+POSTGRES_DB = os.environ.get('POSTGRES_DB')
+POSTGRES_USER = os.environ.get('POSTGRES_USER')
+POSTGRES_PASSWORD = os.environ.get('POSTGRES_PASSWORD')
+
+engine = create_engine(f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@postgres:5432/{POSTGRES_DB}")
+
 def create_kafka_producer(bootstrap_servers, retries=10, delay=3):
     for attempt in range(retries):
         try:
@@ -39,19 +46,35 @@ def create_kafka_producer(bootstrap_servers, retries=10, delay=3):
 
 producer = create_kafka_producer(KAFKA_BROKER)
 
-def send_to_kafka(frame_id, b64_image, car_topic, person_topic, video_id):
-    timestamp = datetime.now(timezone.utc).isoformat()
+def send_to_kafka(frame_id, video_id, car_topic, person_topic, timestamp):
     message = {
         'frame_id': frame_id,
         'timestamp': timestamp,
-        'video_id': video_id,
-        'image': b64_image
+        'video_id': video_id
     }
     producer.send(car_topic, message)
     producer.send(person_topic, message)
     logger.info(f"[{SERVICE_NAME}] Sent frame {frame_id}")
 
+def save_frame_and_record(frame_bytes, frame_id, video_id, timestamp):
+    path = f"/app/frame_store/{video_id}_{frame_id}.jpg"
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "wb") as f:
+        f.write(frame_bytes)
 
+    with engine.begin() as conn:
+        conn.execute(text("""
+            INSERT INTO frames (frame_id, video_id, timestamp, path)
+            VALUES (:frame_id, :video_id, :timestamp, :path)
+            ON CONFLICT (frame_id) DO NOTHING
+        """), {
+            "frame_id": frame_id,
+            "video_id": video_id,
+            "timestamp": timestamp,
+            "path": path
+        })
+
+    return frame_id
 
 
 @app.route('/')
@@ -148,12 +171,15 @@ def start_sequence_stream(input_id):
         frames = sorted(f for f in os.listdir(input_path_seq) if f.lower().endswith(('.jpg', '.png')))
         for frame_file in frames:
             frame_path = os.path.join(input_path_seq, frame_file)
+            frame_id = f'frame_{frame_count:05d}'
             with open(frame_path, 'rb') as f:
-                b64_image = base64.b64encode(f.read()).decode('utf-8')
-            frame_id = f'{input_id}_{frame_count}'
-            send_to_kafka(frame_id, b64_image, CAR_TOPIC, PERSON_TOPIC, input_id)
+                frame_bytes = f.read()
+
+            timestamp = datetime.now(timezone.utc).isoformat()
+            save_frame_and_record(frame_bytes, frame_id, input_id, timestamp)
+            time.sleep(0.1)
+            send_to_kafka(frame_id, input_id, CAR_TOPIC, PERSON_TOPIC, timestamp)
             frame_count += 1
-            time.sleep(0.05)
     elif os.path.isfile(input_path_video) and input_id.endswith(('.mp4', '.avi', '.mov')):
         cap = cv2.VideoCapture(input_path_video)
         while True:
@@ -161,11 +187,12 @@ def start_sequence_stream(input_id):
             if not ret:
                 break
             _, buffer = cv2.imencode('.jpg', frame)
-            b64_image = base64.b64encode(buffer.tobytes()).decode('utf-8')
             frame_id = f'frame_{frame_count:05d}'
-            send_to_kafka(frame_id, b64_image, CAR_TOPIC, PERSON_TOPIC, input_id)
+            timestamp = datetime.now(timezone.utc).isoformat()
+            save_frame_and_record(buffer.tobytes(), frame_id, input_id, timestamp)
+            time.sleep(0.1)
+            send_to_kafka(frame_id, input_id, CAR_TOPIC, PERSON_TOPIC, timestamp)
             frame_count += 1
-            time.sleep(0.05)
         cap.release()
     else:
         return jsonify({'error': f'{input_id} is not a valid folder or video file.'}), 400
@@ -175,8 +202,4 @@ def start_sequence_stream(input_id):
 
 if __name__ == '__main__':
     logger.info("Starting Flask app...")
-    # import threading
-    # task_thread = threading.Thread(target=run_dummy_task)
-    # task_thread.daemon = True # allow main thread to exit
-    # task_thread.start()
-    app.run(debug=True, host='0.0.0.0', port=5000) # Listen on all interfaces
+    app.run(debug=True, host='0.0.0.0', port=5000)

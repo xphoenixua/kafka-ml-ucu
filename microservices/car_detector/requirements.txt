@@ -4,3 +4,5 @@ kafka-python
 opencv-python
 numpy
 pandas
+psycopg2-binary
+sqlalchemy

@@ -5,6 +5,7 @@ import json
 import numpy as np
 import cv2
 import pandas as pd
+from sqlalchemy import create_engine, text
 from kafka import KafkaConsumer, KafkaProducer
 from ultralytics import YOLO
 from threading import Thread
@@ -16,6 +17,19 @@ INPUT_TOPIC = os.getenv('INPUT_TOPIC', 'car-frames')
 OUTPUT_TOPIC = os.getenv('OUTPUT_TOPIC', 'detections-cars')
 YOLO_MODEL_PATH = os.getenv('YOLO_MODEL_PATH', 'yolov8n-visdrone.pt')
 CSV_PATH = os.getenv('CSV_PATH', '/app/car_detections.csv')
+
+POSTGRES_DB = os.environ.get('POSTGRES_DB')
+POSTGRES_USER = os.environ.get('POSTGRES_USER')
+POSTGRES_PASSWORD = os.environ.get('POSTGRES_PASSWORD')
+
+engine = create_engine(f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@postgres:5432/{POSTGRES_DB}")
+
+def load_frame_from_db(frame_id, video_id):
+    with engine.begin() as conn:
+        result = conn.execute(text("SELECT path FROM frames WHERE frame_id = :fid AND video_id = :vid"), {"fid": frame_id, "vid": video_id}).mappings().first()
+        if result:
+            with open(result["path"], "rb") as f:
+                return f.read()
 
 # --- CSV Init ---
 if not os.path.exists(CSV_PATH):
@@ -53,8 +67,8 @@ def detect_loop():
         try:
             data = msg.value
             frame_id = data.get('frame_id')
-            image_b64 = data.get('image')
-            image_bytes = base64.b64decode(image_b64)
+            video_id = data.get('video_id')
+            image_bytes = load_frame_from_db(frame_id, video_id)
             np_img = np.frombuffer(image_bytes, dtype=np.uint8)
             img = cv2.imdecode(np_img, cv2.IMREAD_COLOR)
 
