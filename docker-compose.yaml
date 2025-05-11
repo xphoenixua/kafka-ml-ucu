@@ -125,12 +125,16 @@ services:
     build: ./microservices/stats_generator
     volumes:
       - ./microservices/stats_generator:/app
+      - ./debug_output:/app/debug_output
     command: python /app/app.py
     ports:
       - "5007:5000" # test (a dashboard port)
     environment:
       SERVICE_NAME: Stats Generator
       KAFKA_BROKER: redpanda:29092
+      CAR_TOPIC: tracks-cars
+      PEOPLE_TOPIC: tracks-people
+      CSV_PATH: /app/debug_output/stats.csv
     depends_on:
       - redpanda
 
