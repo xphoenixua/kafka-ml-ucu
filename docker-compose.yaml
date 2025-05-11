@@ -51,13 +51,18 @@ services:
     build: ./microservices/car_detector
     volumes:
       - ./microservices/car_detector:/app
-      # might need volume for model weights later
+      - ./models:/app/models
+      - ./debug_output:/app/debug_output
     command: python /app/app.py
     ports:
       - "5003:5000"
     environment:
       SERVICE_NAME: Car Detector
       KAFKA_BROKER: redpanda:29092
+      INPUT_TOPIC: car-frames
+      OUTPUT_TOPIC: detections-cars
+      YOLO_MODEL_PATH: /app/models/best.pt
+      CSV_PATH: /app/debug_output/car_detections.csv
     depends_on:
       - redpanda
 
@@ -65,12 +70,18 @@ services:
     build: ./microservices/person_detector
     volumes:
       - ./microservices/person_detector:/app
+      - ./models:/app/models
+      - ./debug_output:/app/debug_output
     command: python /app/app.py
     ports:
       - "5004:5000"
     environment:
       SERVICE_NAME: Person Detector
       KAFKA_BROKER: redpanda:29092
+      INPUT_TOPIC: person-frames
+      OUTPUT_TOPIC: detections-people
+      YOLO_MODEL_PATH: /app/models/best.pt
+      CSV_PATH: /app/debug_output/people_detections.csv
     depends_on:
       - redpanda
 
@@ -78,12 +89,17 @@ services:
     build: ./microservices/car_tracker
     volumes:
       - ./microservices/car_tracker:/app
+      - ./debug_output:/app/debug_output
     command: python /app/app.py
     ports:
       - "5005:5000"
     environment:
       SERVICE_NAME: Car Tracker
       KAFKA_BROKER: redpanda:29092
+      INPUT_TOPIC: detections-cars
+      OUTPUT_TOPIC: tracks-cars
+      FRAME_RATE: 30
+      CSV_PATH: /app/debug_output/car_tracks.csv
     depends_on:
       - redpanda
 
@@ -91,12 +107,17 @@ services:
     build: ./microservices/person_tracker
     volumes:
       - ./microservices/person_tracker:/app
+      - ./debug_output:/app/debug_output
     command: python /app/app.py
     ports:
       - "5006:5000"
     environment:
       SERVICE_NAME: Person Tracker
       KAFKA_BROKER: redpanda:29092
+      INPUT_TOPIC: detections-people
+      OUTPUT_TOPIC: tracks-people
+      FRAME_RATE: 30
+      CSV_PATH: /app/debug_output/people_tracks.csv
     depends_on:
       - redpanda
 
