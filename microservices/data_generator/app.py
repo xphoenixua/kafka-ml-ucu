@@ -164,8 +164,6 @@ def start_sequence_stream(input_id):
     input_path_video = os.path.join(DATASET_ROOT_DIR, input_id)
 
     frame_count = 0
-    CAR_TOPIC = 'car-frames'
-    PERSON_TOPIC = 'person-frames'
 
     if os.path.isdir(input_path_seq):
         frames = sorted(f for f in os.listdir(input_path_seq) if f.lower().endswith(('.jpg', '.png')))

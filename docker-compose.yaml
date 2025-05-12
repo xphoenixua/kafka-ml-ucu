@@ -64,8 +64,8 @@ services:
       SERVICE_NAME: Data Generator
       KAFKA_BROKER: redpanda:29092 # connect to the redpanda service using its internal port
       DATASET_ROOT_DIR: /app/data/VisDrone2019-MOT-val
-      CAR_TOPIC: car-detection
-      PERSON_TOPIC: person-detection
+      CAR_TOPIC: car-frames
+      PERSON_TOPIC: person-frames
       <<: *postgres-env
     depends_on:
       redpanda: # depends on Redpanda being ready to send data
