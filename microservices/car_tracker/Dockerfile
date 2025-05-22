@@ -18,7 +18,7 @@ WORKDIR /app
 # Copy and install Python dependencies
 # 1. First install PyTorch CPU wheel (so ultralytics sees torch already)
 RUN pip install --no-cache-dir \
-      torch==2.0.1+cpu torchvision==0.15.2+cpu \
+      torch==2.0.1 torchvision==0.15.2 \
       --extra-index-url https://download.pytorch.org/whl/cpu
 
 # 2. Install ultralytics *without* its dependencies

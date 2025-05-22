@@ -1,5 +1,6 @@
 data/
 frame_store/
+debug_output/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

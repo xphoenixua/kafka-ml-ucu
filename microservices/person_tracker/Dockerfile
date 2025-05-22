@@ -15,7 +15,7 @@ RUN apt-get update \
 WORKDIR /app
 
 RUN pip install --no-cache-dir \
-      torch==2.0.1+cpu torchvision==0.15.2+cpu \
+      torch==2.0.1 torchvision==0.15.2 \
       --extra-index-url https://download.pytorch.org/whl/cpu
 
 # 2. Install ultralytics *without* its dependencies
